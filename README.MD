@@ -1,0 +1,1 @@
+Chat GPT를 활용한 app 테스트용 mock 서버 제작기입니다.
