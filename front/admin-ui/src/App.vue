@@ -99,18 +99,47 @@ async function loadRoutes() {
 }
 
 async function addRoute() {
-  await fetch(`${API_BASE}/admin/routes`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      method: form.value.method,
-      path: form.value.path,
-      status: form.value.status,
-      response: JSON.parse(form.value.response),
-    }),
-  })
-  showModal.value = false
-  await loadRoutes()
+  // ① form.value.path 에서 앞뒤 공백 제거
+  let rawPath = form.value.path.trim()
+
+  // ② "/" 로 시작하지 않으면 앞에 붙여준다
+  if (!rawPath.startsWith('/')) {
+    rawPath = '/' + rawPath
+  }
+  // 1) 먼저 response JSON을 안전하게 파싱
+  let parsedResponse: any;
+  try {
+    parsedResponse = JSON.parse(form.value.response);
+  } catch (err) {
+    console.error('[ERROR] Invalid JSON in response field:', err);
+    alert(
+      '🚫 응답 필드에 유효한 JSON을 입력해주세요.\n\n' +
+      '예시: { "msg": "Hello World" }'
+    );
+    return; // 잘못된 JSON이므로 등록 중단
+  }
+
+  // 2) 파싱이 성공했으면 실제 POST 요청
+  try {
+    const res = await fetch(`${API_BASE}/admin/routes`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        method: form.value.method,
+        path: form.value.path,
+        status: form.value.status,
+        response: parsedResponse,
+      }),
+    });
+    if (!res.ok) throw new Error(`등록 실패: ${res.status}`);
+    
+    // 등록 후 목록 갱신
+    await loadRoutes();
+    showModal.value = false;
+  } catch (err: any) {
+    console.error('[ERROR] addRoute failed:', err);
+    alert(`등록 중 에러가 발생했습니다:\n${err.message}`);
+  }
 }
 
 async function deleteRoute(id: number) {
