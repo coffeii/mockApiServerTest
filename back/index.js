@@ -52,6 +52,11 @@ app.use(cors({
 }))
 app.use(express.json())
 
+// index.js 맨 위, 라우터 등록 전에
+app.get('/', (_req, res) => {
+  res.status(200).send('OK')
+})
+
 // 관리용 CRUD 엔드포인트
 app.get('/admin/routes', async (_req, res) => {
   await db.read()
