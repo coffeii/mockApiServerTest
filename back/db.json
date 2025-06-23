@@ -1,48 +1,15 @@
 {
   "routes": [
     {
-      "id": 1750313043670,
+      "id": 1,
       "method": "GET",
-      "path": "/123",
+      "path": "/getApi",
       "status": 200,
       "response": {
-        "123": "123"
-      }
-    },
-    {
-      "id": 1750313047775,
-      "method": "GET",
-      "path": "/1234",
-      "status": 200,
-      "response": {
-        "123": "123"
-      }
-    },
-    {
-      "id": 1750313050820,
-      "method": "GET",
-      "path": "/12345",
-      "status": 200,
-      "response": {
-        "123": "123"
-      }
-    },
-    {
-      "id": 1750320422081,
-      "method": "POST",
-      "path": "/postTest",
-      "status": 200,
-      "response": {
-        "name": "youy"
-      }
-    },
-    {
-      "id": 1750321106003,
-      "method": "GET",
-      "path": "/123456",
-      "status": 200,
-      "response": {
-        "name": "youy"
+        "msg": "Hello"
+      },
+      "headers": {
+        "resultCode": "0000"
       }
     }
   ]

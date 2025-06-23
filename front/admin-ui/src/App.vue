@@ -1,21 +1,69 @@
 <template>
-  <div class="min-h-screen bg-base-200">
-    <!-- Header -->
-    <header class="bg-base-300 p-4">
-      <h1 class="text-2xl font-bold">API Manager</h1>
-    </header>
-
-    <main class="p-6">
-      <button class="btn btn-primary mb-4" @click="showModal = true">
-        New API
+  <div class="p-8 space-y-8">
+    <!-- 1. API 등록 섹션 -->
+    <section class="bg-base-200 p-6 rounded-lg shadow">
+      <h2 class="text-2xl font-bold mb-6">API 등록</h2>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- Method -->
+        <div class="form-control">
+          <label class="label"><span class="label-text">Method</span></label>
+          <select v-model="form.method" class="select select-bordered w-full">
+            <option>GET</option>
+            <option>POST</option>
+            <option>PUT</option>
+            <option>DELETE</option>
+          </select>
+        </div>
+        <!-- Path -->
+        <div class="form-control">
+          <label class="label"><span class="label-text">Path</span></label>
+          <input
+            v-model="form.path"
+            placeholder="/your-path"
+            class="input input-bordered w-full"
+          />
+        </div>
+        <!-- Status -->
+        <div class="form-control">
+          <label class="label"><span class="label-text">Status</span></label>
+          <input
+            v-model.number="form.status"
+            type="number"
+            class="input input-bordered w-full"
+          />
+        </div>
+        <!-- Response -->
+        <div class="form-control md:col-span-3">
+          <label class="label"><span class="label-text">Response (JSON)</span></label>
+          <textarea
+            v-model="form.response"
+            class="textarea textarea-bordered w-full"
+            rows="3"
+            placeholder='예: {"msg":"Hello"}'
+          ></textarea>
+        </div>
+        <!-- Headers -->
+        <div class="form-control md:col-span-3">
+          <label class="label"><span class="label-text">Headers (JSON)</span></label>
+          <textarea
+            v-model="form.headers"
+            class="textarea textarea-bordered w-full"
+            rows="2"
+            placeholder='예: {"X-Test-Header":"Value"}'
+          ></textarea>
+        </div>
+      </div>
+      <button
+        class="btn btn-primary mt-6"
+        @click="addRoute"
+      >
+        등록하기
       </button>
+    </section>
 
-       <!-- 수동 로드 버튼 -->
-       <button class="btn btn-outline" @click="loadRoutes">
-        새로고침
-      </button>
-
-      <!-- API 목록 테이블 -->
+    <!-- 2. API 리스트 섹션 -->
+    <section>
+      <h2 class="text-2xl font-bold mb-4">Registered APIs</h2>
       <div class="overflow-x-auto">
         <table class="table table-zebra w-full">
           <thead>
@@ -23,49 +71,35 @@
               <th>Method</th>
               <th>Path</th>
               <th>Status</th>
+              <th>Response</th>
+              <th>Headers</th>
               <th>Action</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="r in routes" :key="r.id">
-              <td><span class="badge badge-outline">{{ r.method }}</span></td>
-              <td><code>{{ r.path }}</code></td>
+              <td>{{ r.method }}</td>
+              <td>{{ r.path }}</td>
               <td>{{ r.status }}</td>
               <td>
-                <button class="btn btn-sm btn-error" @click="deleteRoute(r.id)">
-                  Delete
+                <pre class="whitespace-pre-wrap">{{ JSON.stringify(r.response) }}</pre>
+              </td>
+              <td>
+                <pre class="whitespace-pre-wrap">{{ JSON.stringify(r.headers || {}) }}</pre>
+              </td>
+              <td>
+                <button
+                  class="btn btn-sm btn-error"
+                  @click="deleteRoute(r.id)"
+                >
+                  삭제
                 </button>
               </td>
             </tr>
           </tbody>
         </table>
       </div>
-
-      <!-- Modal -->
-      <div v-if="showModal" class="modal modal-open">
-        <div class="modal-box relative">
-          <h3 class="text-lg font-bold">New API</h3>
-          <button class="btn btn-sm btn-circle absolute right-2 top-2" @click="showModal = false">✕</button>
-
-          <div class="form-control space-y-4 mt-4">
-            <select v-model="form.method" class="select select-bordered w-full">
-              <option>GET</option>
-              <option>POST</option>
-              <option>PUT</option>
-              <option>DELETE</option>
-            </select>
-            <input v-model="form.path" type="text" placeholder="/your-path" class="input input-bordered w-full" />
-            <input v-model.number="form.status" type="number" placeholder="200" class="input input-bordered w-full" />
-            <textarea v-model="form.response" placeholder="{ }" class="textarea textarea-bordered w-full" rows="4"></textarea>
-          </div>
-
-          <div class="modal-action">
-            <button class="btn" @click="showModal = false">Cancel</button>
-            <button class="btn btn-primary" @click="addRoute">Save</button>
-          </div>
-        </div>
-      </div>
-    </main>
+    </section>
   </div>
 </template>
 
@@ -81,11 +115,18 @@ interface Route {
   path: string
   status: number
   response: any
+  headers?: Record<string, string>
 }
 
 const routes = ref<Route[]>([])
 const showModal = ref(false)
-const form = ref({ method: 'GET', path: '', status: 200, response: '{}' })
+const form = ref({
+  method: 'GET',
+  path: '',
+  status: 200,
+  response: '{}',
+  headers: '{}',
+})
 
 async function loadRoutes() {
   try {
@@ -107,16 +148,17 @@ async function addRoute() {
     rawPath = '/' + rawPath
   }
   // 1) 먼저 response JSON을 안전하게 파싱
-  let parsedResponse: any;
+  // 2) JSON 파싱
+  let parsedRes: any, parsedHdr: Record<string,string>
   try {
-    parsedResponse = JSON.parse(form.value.response);
-  } catch (err) {
-    console.error('[ERROR] Invalid JSON in response field:', err);
-    alert(
-      '🚫 응답 필드에 유효한 JSON을 입력해주세요.\n\n' +
-      '예시: { "msg": "Hello World" }'
-    );
-    return; // 잘못된 JSON이므로 등록 중단
+    parsedRes = JSON.parse(form.value.response)
+  } catch {
+    return alert('Response에 유효한 JSON을 입력해주세요.')
+  }
+  try {
+    parsedHdr = JSON.parse(form.value.headers)
+  } catch {
+    return alert('Headers에 유효한 JSON을 입력해주세요.')
   }
 
   // 2) 파싱이 성공했으면 실제 POST 요청
@@ -126,9 +168,10 @@ async function addRoute() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         method: form.value.method,
-        path: form.value.path,
+        path: rawPath,
         status: form.value.status,
-        response: parsedResponse,
+        response: parsedRes,
+        headers: parsedHdr,
       }),
     });
     if (!res.ok) throw new Error(`등록 실패: ${res.status}`);

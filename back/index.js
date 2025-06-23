@@ -5,7 +5,25 @@ import path from 'path'
 
 // 환경변수 사용
 const PORT = process.env.PORT || 3000
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173'
+const FRONTEND_URL = process.env.FRONTEND_URL
+
+const localhost5100s = /^http:\/\/localhost:51\d{2}$/
+const corsOptions = {
+  origin(origin, callback) {
+    // 브라우저가 아닌(예: Postman) 요청엔 origin이 undefined일 수 있으니 허용
+    if (!origin) return callback(null, true)
+
+    if (localhost5100s.test(origin) || origin === FRONTEND_URL) {
+      // localhost:5100–5199 대역이면 허용
+      return callback(null, true)
+    } else {
+      return callback(
+        new Error(`CORS 차단: 허용되지 않은 origin ${origin}`),
+        false
+      )
+    }
+  }
+}
 
 // Lowdb 세팅
 const file = path.join(process.cwd(), 'db.json')
@@ -22,7 +40,7 @@ const app = express()
 
 // CORS: 배포된 프론트 도메인만 허용
 app.use(cors({
-  origin: FRONTEND_URL,
+  origin: corsOptions,
 }))
 app.use(express.json())
 
@@ -42,13 +60,9 @@ app.post('/admin/routes', async (req, res) => {
   const newId = ids.length ? Math.max(...ids) + 1 : 1
 
   // ③ 정상적인 id와 함께 새 라우트 생성
-  const newRoute = {
-    id: newId,
-    method: req.body.method,
-    path: req.body.path,
-    status: req.body.status,
-    response: req.body.response
-  }
+  const { method, path, status, response, headers } = req.body
+
+  const newRoute = { id: newId, method, path, status, response, headers }
 
   // ④ 메모리와 파일에 저장
   db.data.routes.push(newRoute)
@@ -83,18 +97,23 @@ app.delete('/admin/routes/:id', async (req, res) => {
 
 app.all('*', async (req, res) => {
   if (req.path.startsWith('/admin')) return res.status(404).end()
-  await db.read()
-
-  // req.path 가 "/123" 이면, "/" 빼고 비교도 해본다
-  const plain = req.path.startsWith('/') ? req.path.slice(1) : req.path
-
-  const route = db.data.routes.find(r =>
-    r.method === req.method &&
-    (r.path === req.path || r.path === plain)
-  )
-
-  if (!route) return res.status(404).json({ error: 'Not found' })
-  res.status(route.status).json(route.response)
+    await db.read()
+  
+    const plain = req.path.startsWith('/') ? req.path.slice(1) : req.path
+    const route = db.data.routes.find(r =>
+      r.method === req.method &&
+      (r.path === req.path || r.path === plain)
+    )
+    if (!route) return res.status(404).json({ error: 'Not found' })
+  
+    // 저장된 headers를 응답 헤더에 설정
+    if (route.headers && typeof route.headers === 'object') {
+      Object.entries(route.headers).forEach(([key, val]) => {
+        res.setHeader(key, val)
+      })
+    }
+  
+    res.status(route.status).json(route.response)
 })
 // DB 초기화 후 서버 시작
 initDb().then(() => {
