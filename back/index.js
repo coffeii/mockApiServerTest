@@ -127,7 +127,7 @@ app.all('*', async (req, res) => {
 // initDb 후 서버 시작
 initDb().then(() => {
   try {
-    app.listen(PORT, () => {
+    app.listen(PORT, '0.0.0.0', () => {
       console.log(`🚀 Server listening on port ${PORT}`)
       console.log(`🔖 CORS origin: ${FRONTEND_URL}`)
     })
