@@ -2,7 +2,10 @@ import express from 'express'
 import cors from 'cors'
 import { Low, JSONFile } from 'lowdb'
 import path from 'path'
+import dotenv from 'dotenv'
+dotenv.config()
 
+console.log('🔧 Starting Mock API server bootstrap...')
 // 환경변수 사용
 const PORT = process.env.PORT || 3000
 const FRONTEND_URL = process.env.FRONTEND_URL
@@ -31,9 +34,14 @@ const adapter = new JSONFile(file)
 const db = new Low(adapter)
 
 async function initDb() {
-  await db.read()
-  db.data ||= { routes: [] }
-  await db.write()
+  try {
+    await db.read()
+    db.data ||= { routes: [] }
+    await db.write()
+    console.log('✅ Lowdb initialized, routes:', db.data.routes.length)
+  } catch (err) {
+    console.error('❌ initDb error:', err)
+  }
 }
 
 const app = express()
@@ -115,10 +123,15 @@ app.all('*', async (req, res) => {
   
     res.status(route.status).json(route.response)
 })
-// DB 초기화 후 서버 시작
+
+// initDb 후 서버 시작
 initDb().then(() => {
-  app.listen(PORT, () => {
-    console.log(`🚀 Mock API 서버 running on http://localhost:${PORT}`)
-    console.log(`Allowed CORS origin: ${FRONTEND_URL}`)
-  })
+  try {
+    app.listen(PORT, () => {
+      console.log(`🚀 Server listening on port ${PORT}`)
+      console.log(`🔖 CORS origin: ${FRONTEND_URL}`)
+    })
+  } catch (err) {
+    console.error('❌ app.listen error:', err)
+  }
 })
