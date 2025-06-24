@@ -1,3 +1,4 @@
+// back/index.js
 import express from 'express'
 import cors from 'cors'
 import { Low, JSONFile } from 'lowdb'
@@ -5,83 +6,69 @@ import path from 'path'
 import dotenv from 'dotenv'
 dotenv.config()
 
-console.log('🔧 Starting Mock API server bootstrap...')
-// 환경변수 사용
+// 0. DEBUG: 현재 작업 디렉터리 확인
+console.log('📂 Working directory:', process.cwd())
+
+// 1. 포트 설정 (Railway가 할당하는 PORT 환경변수 사용)
 const PORT = process.env.PORT || 3000
-const FRONTEND_URL = process.env.FRONTEND_URL
 
-const localhost5100s = /^http:\/\/localhost:51\d{2}$/
-const corsOptions = {
-  origin(origin, callback) {
-    // 브라우저가 아닌(예: Postman) 요청엔 origin이 undefined일 수 있으니 허용
-    if (!origin) return callback(null, true)
+// 2. CORS 허용 도메인
+//    - 로컬 개발 시 http://localhost:5173 허용
+//    - 프로덕션 시 FRONTEND_URL 로 변경 (Railway Variables에서 설정)
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173'
+console.log(`🌐 CORS origin set to: ${FRONTEND_URL}`)
 
-    if (localhost5100s.test(origin) || origin === FRONTEND_URL) {
-      // localhost:5100–5199 대역이면 허용
-      return callback(null, true)
-    } else {
-      return callback(
-        new Error(`CORS 차단: 허용되지 않은 origin ${origin}`),
-        false
-      )
-    }
-  }
-}
+// 3. Lowdb 파일 경로
+//    Railway의 Root Directory를 'back'으로 설정했다면,
+//    process.cwd()가 '/app/back'이 되고, 그 안에 db.json이 있어야 합니다.
+const dbFile = path.join(process.cwd(), 'db.json')
+console.log('🗄️  DB file path:', dbFile)
 
-// Lowdb 세팅
-const file = path.join(process.cwd(), 'db.json')
-const adapter = new JSONFile(file)
+const adapter = new JSONFile(dbFile)
 const db = new Low(adapter)
 
+// 4. DB 초기화
 async function initDb() {
   try {
     await db.read()
     db.data ||= { routes: [] }
     await db.write()
-    console.log('✅ Lowdb initialized, routes:', db.data.routes.length)
+    console.log('✅ Lowdb initialized, routes count =', db.data.routes.length)
   } catch (err) {
-    console.error('❌ initDb error:', err)
+    console.error('❌ initDb failed:', err)
+    // 만약 여기서 에러가 나면 컨테이너가 기동했어도 바로 죽을 수 있으니
+    // 예외를 swallow하고 빈 배열로라도 시작하도록 합니다.
+    db.data = { routes: [] }
+    await db.write().catch(() => {})
   }
 }
 
 const app = express()
 
-// CORS: 배포된 프론트 도메인만 허용
-app.use(cors({
-  origin: corsOptions,
-}))
+// 5. CORS & JSON body parsing
+app.use(cors({ origin: FRONTEND_URL }))
 app.use(express.json())
 
-// index.js 맨 위, 라우터 등록 전에
+// 6. 헬스체크 엔드포인트 (Railway 기본 헬스체크: GET "/")
 app.get('/', (_req, res) => {
   res.status(200).send('OK')
 })
 
-// 관리용 CRUD 엔드포인트
+// 7. 관리용 CRUD 엔드포인트
 app.get('/admin/routes', async (_req, res) => {
   await db.read()
   res.json(db.data.routes)
 })
 
-// 기존 app.post('/admin/routes', async (req, res) => { ... })
 app.post('/admin/routes', async (req, res) => {
-  // ① 최신 데이터 읽기
   await db.read()
-
-  // ② 현재 있는 id 중 최대값을 찾아 +1 (없으면 1부터)
   const ids = db.data.routes.map(r => r.id)
   const newId = ids.length ? Math.max(...ids) + 1 : 1
 
-  // ③ 정상적인 id와 함께 새 라우트 생성
-  const { method, path, status, response, headers } = req.body
-
-  const newRoute = { id: newId, method, path, status, response, headers }
-
-  // ④ 메모리와 파일에 저장
+  const { method, path: p, status, response, headers } = req.body
+  const newRoute = { id: newId, method, path: p, status, response, headers }
   db.data.routes.push(newRoute)
   await db.write()
-
-  // ⑤ 클라이언트에 생성된 객체 반환
   res.status(201).json(newRoute)
 })
 
@@ -108,32 +95,33 @@ app.delete('/admin/routes/:id', async (req, res) => {
   res.status(204).end()
 })
 
+// 8. Mock API 동적 처리 (catch-all)
+//    관리용 엔드포인트 외의 모든 요청을 여기서 처리
 app.all('*', async (req, res) => {
-  if (req.path.startsWith('/admin')) return res.status(404).end()
-    await db.read()
-  
-    const plain = req.path.startsWith('/') ? req.path.slice(1) : req.path
-    const route = db.data.routes.find(r =>
-      r.method === req.method &&
-      (r.path === req.path || r.path === plain)
-    )
-    if (!route) return res.status(404).json({ error: 'Not found' })
-  
-    // 저장된 headers를 응답 헤더에 설정
-    if (route.headers && typeof route.headers === 'object') {
-      Object.entries(route.headers).forEach(([key, val]) => {
-        res.setHeader(key, val)
-      })
-    }
-  
-    res.status(route.status).json(route.response)
+  // 이미 "/" 와 "/admin" 경로를 처리했으므로, 그 외만
+  await db.read()
+  // "/123" vs "123" 매칭
+  const plain = req.path.startsWith('/') ? req.path.slice(1) : req.path
+  const route = db.data.routes.find(r =>
+    r.method === req.method &&
+    (r.path === req.path || r.path === plain)
+  )
+  if (!route) return res.status(404).json({ error: 'Not found' })
+
+  // 저장된 headers를 실제 응답 헤더로 설정
+  if (route.headers && typeof route.headers === 'object') {
+    Object.entries(route.headers).forEach(([k, v]) => {
+      res.setHeader(k, v)
+    })
+  }
+  res.status(route.status).json(route.response)
 })
 
-// initDb 후 서버 시작
+// 9. DB 초기화 후 서버 시작
 initDb().then(() => {
   try {
     app.listen(PORT, '0.0.0.0', () => {
-      console.log(`🚀 Server listening on port ${PORT}`)
+      console.log(`🚀 Server listening on 0.0.0.0:${PORT}`)
       console.log(`🔖 CORS origin: ${FRONTEND_URL}`)
     })
   } catch (err) {
