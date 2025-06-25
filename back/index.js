@@ -4,7 +4,6 @@ import cors from 'cors'
 import { Low, JSONFile } from 'lowdb'
 import path from 'path'
 import dotenv from 'dotenv'
-import cors from 'cors'
 
 dotenv.config()
 
