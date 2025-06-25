@@ -52,12 +52,19 @@ const corsOptions = { methods: ['GET','POST','PUT','DELETE','OPTIONS'],
 }
 
 // 5. CORS & JSON body parsing
-// 1) 로그로 실제 Origin 확인해 보기
-app.use((req, _res, next) => {
+// ⚠️ 맨 위에, 모든 요청에 무조건 CORS 헤더 주입
+app.use((req, res, next) => {
   console.log('➜ Incoming Origin:', req.headers.origin)
+  res.setHeader('Access-Control-Allow-Origin', 'http://localhost:5173')
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS')
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+  // 브라우저가 preflight 이후 실제 요청을 보내도록 빈 응답을 주거나 건너뛰게 함
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200)
+  }
   next()
 })
-// 2) 개발 모드면 CORS 모두 열어주기
+
 if (process.env.NODE_ENV !== 'production') {
   app.use(cors(corsOptions))
   console.log('⚙️  CORS: development mode, allowing all origins')

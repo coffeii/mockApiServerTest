@@ -165,6 +165,7 @@ async function addRoute() {
   try {
     const res = await fetch(`${API_BASE}/admin/routes`, {
       method: 'POST',
+      mode: 'cors',                  // ← 명시적으로 CORS 모드
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         method: form.value.method,
