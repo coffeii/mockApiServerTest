@@ -46,6 +46,16 @@ async function initDb() {
 
 const app = express()
 
+const corsOptions = {
+  origin(origin, callback) {
+    if (!origin || origin === 'http://localhost:5173') return callback(null, true)
+    return callback(null, false)
+  },
+  methods: ['GET','POST','PUT','DELETE','OPTIONS'],
+  allowedHeaders: ['Content-Type'],   // 프론트에서 보내는 헤더 종류
+  optionsSuccessStatus: 200
+}
+
 // 5. CORS & JSON body parsing
 // 1) 로그로 실제 Origin 확인해 보기
 app.use((req, _res, next) => {
