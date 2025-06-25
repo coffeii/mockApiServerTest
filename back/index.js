@@ -67,6 +67,7 @@ if (process.env.NODE_ENV !== 'production') {
   }))
   console.log(`⚙️  CORS: production mode, allowing only ${PROD}`)
 }
+app.options('*', cors(corsOptions)) 
 app.use(express.json())
 
 // 6. 헬스체크 엔드포인트 (Railway 기본 헬스체크: GET "/")
