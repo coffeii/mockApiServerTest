@@ -46,12 +46,7 @@ async function initDb() {
 
 const app = express()
 
-const corsOptions = {
-  origin(origin, callback) {
-    if (!origin || origin === 'http://localhost:5173') return callback(null, true)
-    return callback(null, false)
-  },
-  methods: ['GET','POST','PUT','DELETE','OPTIONS'],
+const corsOptions = { methods: ['GET','POST','PUT','DELETE','OPTIONS'],
   allowedHeaders: ['Content-Type'],   // 프론트에서 보내는 헤더 종류
   optionsSuccessStatus: 200
 }
@@ -64,7 +59,7 @@ app.use((req, _res, next) => {
 })
 // 2) 개발 모드면 CORS 모두 열어주기
 if (process.env.NODE_ENV !== 'production') {
-  app.use(cors())
+  app.use(cors(corsOptions))
   console.log('⚙️  CORS: development mode, allowing all origins')
 } else {
   // production 모드일 때만 whitelist 기반으로 설정
@@ -73,7 +68,8 @@ if (process.env.NODE_ENV !== 'production') {
     origin(origin, callback) {
       if (!origin || origin === PROD) return callback(null, true)
       callback(new Error(`CORS block for ${origin}`))
-    }
+    },
+    corsOptions
   }))
   console.log(`⚙️  CORS: production mode, allowing only ${PROD}`)
 }
