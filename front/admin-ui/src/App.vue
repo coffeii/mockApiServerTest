@@ -107,7 +107,7 @@
 import { ref, onMounted } from 'vue'
 
 // Rail­way에 배포된 백엔드 URL을 환경변수에서 읽어옵니다.
-const API_BASE = import.meta.env.VITE_API_BASE_URL
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'
 
 interface Route {
   id: number
@@ -119,7 +119,6 @@ interface Route {
 }
 
 const routes = ref<Route[]>([])
-const showModal = ref(false)
 const form = ref({
   method: 'GET',
   path: '',
@@ -131,63 +130,41 @@ const form = ref({
 async function loadRoutes() {
   try {
     const res = await fetch(`${API_BASE}/admin/routes`)
-    if (!res.ok) throw new Error('라우트 로드 실패')
+    if (!res.ok) throw new Error(res.statusText)
     routes.value = await res.json()
-  } catch (e) {
-    console.error(e)
-    alert('라우트를 불러오는 중 에러가 발생했습니다.')
+  } catch (e:any) {
+    alert('라우트 로드 오류: ' + e.message)
   }
 }
 
 async function addRoute() {
-  // ① form.value.path 에서 앞뒤 공백 제거
-  let rawPath = form.value.path.trim()
+  // path 노멀라이즈
+  let p = form.value.path.trim()
+  if (!p.startsWith('/')) p = '/' + p
 
-  // ② "/" 로 시작하지 않으면 앞에 붙여준다
-  if (!rawPath.startsWith('/')) {
-    rawPath = '/' + rawPath
-  }
-  // 1) 먼저 response JSON을 안전하게 파싱
-  // 2) JSON 파싱
-  let parsedRes: any, parsedHdr: Record<string,string>
-  try {
-    parsedRes = JSON.parse(form.value.response)
-  } catch {
-    return alert('Response에 유효한 JSON을 입력해주세요.')
-  }
-  try {
-    parsedHdr = JSON.parse(form.value.headers)
-  } catch {
-    return alert('Headers에 유효한 JSON을 입력해주세요.')
-  }
+  // JSON 파싱
+  let resp: any, hdr: Record<string,string>
+  try { resp = JSON.parse(form.value.response) } catch { return alert('Response JSON 형식 오류') }
+  try { hdr  = JSON.parse(form.value.headers) }   catch { return alert('Headers JSON 형식 오류') }
 
-  // 2) 파싱이 성공했으면 실제 POST 요청
+  // POST (mode: 'cors' 명시)
   try {
     const res = await fetch(`${API_BASE}/admin/routes`, {
       method: 'POST',
-      mode: 'cors',                  // ← 명시적으로 CORS 모드
+      mode: 'cors',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        method: form.value.method,
-        path: rawPath,
-        status: form.value.status,
-        response: parsedRes,
-        headers: parsedHdr,
-      }),
-    });
-    if (!res.ok) throw new Error(`등록 실패: ${res.status}`);
-    
-    // 등록 후 목록 갱신
-    await loadRoutes();
-    showModal.value = false;
-  } catch (err: any) {
-    console.error('[ERROR] addRoute failed:', err);
-    alert(`등록 중 에러가 발생했습니다:\n${err.message}`);
+      body: JSON.stringify({ method: form.value.method, path:p, status:form.value.status, response:resp, headers:hdr })
+    })
+    if (!res.ok) throw new Error(res.statusText)
+    form.value = { method:'GET', path:'', status:200, response:'{}', headers:'{}' }
+    await loadRoutes()
+  } catch (e:any) {
+    alert('등록 오류: ' + e.message)
   }
 }
 
 async function deleteRoute(id: number) {
-  await fetch(`${API_BASE}/admin/routes/${id}`, { method: 'DELETE' })
+  await fetch(`${API_BASE}/admin/routes/${id}`, { method: 'DELETE', mode:'cors' })
   await loadRoutes()
 }
 
