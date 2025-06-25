@@ -4,6 +4,8 @@ import cors from 'cors'
 import { Low, JSONFile } from 'lowdb'
 import path from 'path'
 import dotenv from 'dotenv'
+import cors from 'cors'
+
 dotenv.config()
 
 // 0. DEBUG: 현재 작업 디렉터리 확인
@@ -46,7 +48,26 @@ async function initDb() {
 const app = express()
 
 // 5. CORS & JSON body parsing
-app.use(cors({ origin: FRONTEND_URL }))
+// 1) 로그로 실제 Origin 확인해 보기
+app.use((req, _res, next) => {
+  console.log('➜ Incoming Origin:', req.headers.origin)
+  next()
+})
+// 2) 개발 모드면 CORS 모두 열어주기
+if (process.env.NODE_ENV !== 'production') {
+  app.use(cors())
+  console.log('⚙️  CORS: development mode, allowing all origins')
+} else {
+  // production 모드일 때만 whitelist 기반으로 설정
+  const PROD = process.env.FRONTEND_URL  // e.g. https://your-site.netlify.app
+  app.use(cors({
+    origin(origin, callback) {
+      if (!origin || origin === PROD) return callback(null, true)
+      callback(new Error(`CORS block for ${origin}`))
+    }
+  }))
+  console.log(`⚙️  CORS: production mode, allowing only ${PROD}`)
+}
 app.use(express.json())
 
 // 6. 헬스체크 엔드포인트 (Railway 기본 헬스체크: GET "/")
