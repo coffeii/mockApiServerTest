@@ -33,7 +33,12 @@ const app = express()
 
 // 4) CORS/Preflight: 맨 위에서 모든 요청 허용 (개발 모드)
 if (process.env.NODE_ENV !== 'production') {
-  app.use(cors({ origin: FRONTEND_URL }))
+  app.use(cors({ 
+    origin: FRONTEND_URL,
+    methods: ['GET','POST','PUT','DELETE','OPTIONS'],
+    allowedHeaders: ['*'],
+    optionsSuccessStatus: 200
+   }))
   app.options('*', cors())
   console.log('⚙️ Dev CORS: allowing all origins')
 } else {
@@ -44,7 +49,7 @@ if (process.env.NODE_ENV !== 'production') {
       return cb(new Error(`CORS blocked: ${origin}`))
     },
     methods: ['GET','POST','PUT','DELETE','OPTIONS'],
-    allowedHeaders: ['Content-Type'],
+    allowedHeaders: ['*'],
     optionsSuccessStatus: 200
   }))
   app.options('*', cors())

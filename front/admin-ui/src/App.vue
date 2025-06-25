@@ -129,7 +129,7 @@ const form = ref({
 
 async function loadRoutes() {
   try {
-    const res = await fetch(`${API_BASE}/admin/routes`)
+    const res = await fetch(`${API_BASE}/admin/routes`, { mode: 'cors' })
     if (!res.ok) throw new Error(res.statusText)
     routes.value = await res.json()
   } catch (e:any) {
