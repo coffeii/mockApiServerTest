@@ -11,6 +11,36 @@
       "headers": {
         "resultCode": "0000"
       }
+    },
+    {
+      "id": 2,
+      "method": "GET",
+      "path": "/tumblerTest",
+      "status": 200,
+      "response": {
+        "tumblerRewardType":"D",
+        "tumblerDcAmount":400,
+        "srMemberYn":"Y",
+        "tumblerRewardSetYn":"Y",
+        "showMenuYn":"Y"
+      },
+      "headers": {
+        "resultCode":"0000",
+        "resultMessage":"Good"
+      }
+    },
+    {
+      "id": 3,
+      "method": "POST",
+      "path": "/tumblerTest",
+      "status": 200,
+      "response": {
+        "tumblerRewardType":"S"
+      },
+      "headers": {
+        "resultCode":"0000",
+        "resultMessage":"Good"
+      }
     }
   ]
 }

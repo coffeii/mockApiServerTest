@@ -82,7 +82,11 @@
               <td>{{ r.path }}</td>
               <td>{{ r.status }}</td>
               <td>
-                <pre class="whitespace-pre-wrap">{{ JSON.stringify(r.response) }}</pre>
+                <pre
+                  class="bg-base-100 p-2 rounded font-mono text-sm overflow-x-auto whitespace-pre-wrap"
+                >
+                  {{ JSON.stringify(r.response, null, 2) }}
+                </pre>
               </td>
               <td>
                 <pre class="whitespace-pre-wrap">{{ JSON.stringify(r.headers || {}) }}</pre>
