@@ -32,24 +32,24 @@
             class="input input-bordered w-full"
           />
         </div>
-        <!-- Response -->
+        <!-- Response.Headers -->
         <div class="form-control md:col-span-3">
-          <label class="label"><span class="label-text">Response (JSON)</span></label>
-          <textarea
-            v-model="form.response"
-            class="textarea textarea-bordered w-full"
-            rows="3"
-            placeholder='예: {"msg":"Hello"}'
-          ></textarea>
-        </div>
-        <!-- Headers -->
-        <div class="form-control md:col-span-3">
-          <label class="label"><span class="label-text">Headers (JSON)</span></label>
+          <label class="label"><span class="label-text">Response.Headers (JSON)</span></label>
           <textarea
             v-model="form.headers"
             class="textarea textarea-bordered w-full"
             rows="2"
             placeholder='예: {"X-Test-Header":"Value"}'
+          ></textarea>
+        </div>
+        <!-- Response.Body -->
+        <div class="form-control md:col-span-3">
+          <label class="label"><span class="label-text">Response.Body (JSON)</span></label>
+          <textarea
+            v-model="form.response"
+            class="textarea textarea-bordered w-full"
+            rows="3"
+            placeholder='예: {"msg":"Hello"}'
           ></textarea>
         </div>
       </div>
@@ -71,8 +71,8 @@
               <th>Method</th>
               <th>Path</th>
               <th>Status</th>
-              <th>Response</th>
-              <th>Headers</th>
+              <th>Response.Headers</th>
+              <th>Response.Body</th>
               <th>Action</th>
             </tr>
           </thead>
@@ -82,14 +82,14 @@
               <td>{{ r.path }}</td>
               <td>{{ r.status }}</td>
               <td>
+                <pre class="whitespace-pre-wrap">{{ JSON.stringify(r.headers || {}) }}</pre>
+              </td>
+              <td>
                 <pre
                   class="bg-base-100 p-2 rounded font-mono text-sm overflow-x-auto whitespace-pre-wrap"
                 >
                   {{ JSON.stringify(r.response, null, 2) }}
                 </pre>
-              </td>
-              <td>
-                <pre class="whitespace-pre-wrap">{{ JSON.stringify(r.headers || {}) }}</pre>
               </td>
               <td>
                 <button
